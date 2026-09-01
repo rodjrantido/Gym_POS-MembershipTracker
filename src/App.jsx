@@ -12,6 +12,7 @@ import {
   fetchMembers,
   insertMember,
   renewMemberPlan,
+  updateMemberExpiration,
   updateMemberPhoto,
   deleteMember,
   uploadMemberPhoto,
@@ -211,21 +212,25 @@ export default function App() {
     }
 
     const now = new Date();
-    const amountPaid = memberData.amount || 500;
+    const amountPaid = memberData.amount || 0;
+    const isNewRegistration = !memberData.isExistingImport && amountPaid > 0;
     const months = memberData.months || Math.max(1, Math.floor(amountPaid / 500));
     
-    // Initial registration transaction
-    const initialTransaction = {
-      transactionId: `MEM-${Math.floor(Math.random() * 10000)}`,
-      customerId: memberId,
-      customerType: 'MEMBER',
-      date: now.toLocaleDateString(),
-      time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      totalAmount: amountPaid,
-      status: 'PAID',
-      wasUnpaid: false,
-      items: [{ name: `${months}-Month Membership Registration`, qty: 1, price: amountPaid }]
-    };
+    // Initial registration transaction (only if standard payment)
+    let initialTransaction = null;
+    if (isNewRegistration) {
+      initialTransaction = {
+        transactionId: `MEM-${Math.floor(Math.random() * 10000)}`,
+        customerId: memberId,
+        customerType: 'MEMBER',
+        date: now.toLocaleDateString(),
+        time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        totalAmount: amountPaid,
+        status: 'PAID',
+        wasUnpaid: false,
+        items: [{ name: `${months}-Month Membership Registration`, qty: 1, price: amountPaid }]
+      };
+    }
 
     const newMember = {
       id: memberId,
@@ -234,16 +239,17 @@ export default function App() {
       plan: memberData.plan || (months === 1 ? '1 Month (₱500)' : `${months} Months (₱${amountPaid})`),
       status: 'ACTIVE',
       startDate: memberData.startDate || now.toISOString().split('T')[0],
-      expiresAt: memberData.expiresAt || new Date(now.getTime() + months * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      expiresAt: memberData.expiresAt || new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       photoUrl: photoUrl,
-      purchaseHistory: [initialTransaction]
+      purchaseHistory: initialTransaction ? [initialTransaction] : []
     };
 
     try {
-      await Promise.all([
-        insertMember(newMember),
-        insertTransaction(initialTransaction)
-      ]);
+      const promises = [insertMember(newMember)];
+      if (initialTransaction) {
+        promises.push(insertTransaction(initialTransaction));
+      }
+      await Promise.all(promises);
       setMembers(prev => [newMember, ...prev]);
     } catch (err) {
       console.warn('Could not save member/transaction to Supabase, updating locally:', err);
@@ -263,6 +269,25 @@ export default function App() {
       console.warn('Could not update photo in Supabase:', err);
     }
   };
+
+  const handleUpdateMemberExpiration = async (memberId, newExpiresAt) => {
+    try {
+      await updateMemberExpiration(memberId, newExpiresAt);
+    } catch (err) {
+      console.warn('Could not update member expiration in Supabase:', err);
+    }
+    setMembers(prev => prev.map(m => {
+      if (m.id === memberId) {
+        return {
+          ...m,
+          expiresAt: newExpiresAt,
+          status: 'ACTIVE'
+        };
+      }
+      return m;
+    }));
+  };
+
 
   const handleRenewMember = async (memberId, renewOptions = {}) => {
     const member = members.find(m => m.id === memberId);
@@ -533,6 +558,7 @@ export default function App() {
             onMarkPaid={handleMarkPaid}
             onRenew={handleRenewMember}
             onUpdatePhoto={handleUpdateMemberPhoto}
+            onUpdateExpiration={handleUpdateMemberExpiration}
           />
         );
       }

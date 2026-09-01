@@ -255,6 +255,25 @@ export async function renewMemberPlan(memberId, newExpiresAt) {
   return data;
 }
 
+export async function updateMemberExpiration(memberId, newExpiresAt) {
+  const { data, error } = await supabase
+    .from('members')
+    .update({
+      expires_at: newExpiresAt,
+      status: 'ACTIVE',
+    })
+    .eq('id', memberId)
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error updating member expiration:', error);
+    throw error;
+  }
+  return data;
+}
+
+
 export async function updateMemberPhoto(memberId, photoUrl) {
   const { data, error } = await supabase
     .from('members')
