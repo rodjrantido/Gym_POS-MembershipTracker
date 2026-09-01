@@ -5,8 +5,9 @@ import Header from '../../components/Header';
 import Input from '../../components/Input';
 import Badge from '../../components/Badge';
 
-export const SelectCartItemScreen = ({ inventory, navigate, onAddToCart }) => {
+export const SelectCartItemScreen = ({ inventory, navigate, onAddToCart, onSelect }) => {
   const [search, setSearch] = useState('');
+  const handleAdd = onAddToCart || onSelect;
   const filtered = inventory.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
@@ -24,8 +25,8 @@ export const SelectCartItemScreen = ({ inventory, navigate, onAddToCart }) => {
             <div 
               key={item.id} 
               onClick={() => {
-                if (item.stock > 0) {
-                  onAddToCart(item);
+                if (item.stock > 0 && handleAdd) {
+                  handleAdd(item);
                   navigate('home');
                 }
               }}

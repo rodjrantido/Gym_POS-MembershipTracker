@@ -538,7 +538,8 @@ export default function App() {
           <SelectCartItemScreen 
             inventory={inventory} 
             navigate={navigate} 
-            onSelect={handleAddToCart} 
+            onAddToCart={handleAddToCart}
+            onSelect={handleAddToCart}
           />
         );
       case 'members': 
