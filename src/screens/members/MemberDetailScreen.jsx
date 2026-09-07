@@ -1,31 +1,17 @@
 import { useState } from 'react';
-import { Trash2, Camera, Calendar, RefreshCw, Loader2, Clock, Check, Edit3 } from 'lucide-react';
+import { Trash2, Camera, Calendar, RefreshCw, Loader2 } from 'lucide-react';
 import { THEME } from '../../constants/theme';
 import Header from '../../components/Header';
 import Button from '../../components/Button';
 import Badge from '../../components/Badge';
-import Input from '../../components/Input';
 import PurchaseHistoryList from '../../components/PurchaseHistoryList';
 import CameraCaptureModal from '../../components/CameraCaptureModal';
 
-export const MemberDetailScreen = ({ 
-  member, 
-  navigate, 
-  onDelete, 
-  onMarkPaid, 
-  onRenew, 
-  onUpdatePhoto,
-  onUpdateExpiration 
-}) => {
+export const MemberDetailScreen = ({ member, navigate, onDelete, onMarkPaid, onRenew, onUpdatePhoto }) => {
   const [renewing, setRenewing] = useState(false);
   const [renewAmount, setRenewAmount] = useState('500');
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-
-  // Direct Days Left Adjustment State
-  const [isAdjustingDays, setIsAdjustingDays] = useState(false);
-  const [savingDays, setSavingDays] = useState(false);
-  const [targetDays, setTargetDays] = useState('30');
 
   if (!member) return null;
 
@@ -82,24 +68,6 @@ export const MemberDetailScreen = ({
     }
   };
 
-  // Adjust remaining days calculations
-  const targetDaysNum = parseInt(targetDays, 10) || 0;
-  const newAdjustedDateObj = new Date(today.getTime() + targetDaysNum * 24 * 60 * 60 * 1000);
-  const newAdjustedDateISO = newAdjustedDateObj.toISOString().split('T')[0];
-  const newAdjustedDateFormatted = newAdjustedDateObj.toLocaleDateString();
-
-
-  const handleSaveDaysLeft = async () => {
-    if (targetDaysNum <= 0 || !onUpdateExpiration) return;
-    setSavingDays(true);
-    try {
-      await onUpdateExpiration(member.id, newAdjustedDateISO);
-      setIsAdjustingDays(false);
-    } finally {
-      setSavingDays(false);
-    }
-  };
-
   const renewalPresets = [
     { label: '+1 Mo', amount: '500' },
     { label: '+2 Mos', amount: '1000' },
@@ -152,7 +120,7 @@ export const MemberDetailScreen = ({
            </div>
            
            {/* Plan & Status Card */}
-           <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 mb-4 space-y-3">
+           <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 mb-5 space-y-3">
               <div className="flex justify-between items-center">
                 <div>
                   <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-0.5">Current Plan</p>
@@ -179,71 +147,7 @@ export const MemberDetailScreen = ({
                   )}
                 </div>
               </div>
-
-              {/* Toggle Manual Days Left Adjustment */}
-              <div className="pt-2 border-t border-zinc-900 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setIsAdjustingDays(!isAdjustingDays)}
-                  className="text-xs text-[#d4ff00] font-bold hover:underline flex items-center gap-1"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                  {isAdjustingDays ? 'Close Adjustment' : 'Adjust Days Remaining'}
-                </button>
-              </div>
            </div>
-
-           {/* Manual Days Left Adjustment Box */}
-           {isAdjustingDays && (
-             <div className="bg-zinc-900/90 p-4 rounded-xl border border-[#d4ff00]/30 space-y-3 mb-5 animate-in fade-in duration-200">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-1.5">
-                    <Clock className="w-4 h-4 text-[#d4ff00]" /> Set Remaining Days
-                  </span>
-                  <span className="text-[10px] text-zinc-400">Expires: <strong className="text-zinc-200">{newAdjustedDateFormatted}</strong></span>
-                </div>
-
-                <Input 
-                  type="number"
-                  min="1"
-                  placeholder="e.g. 15"
-                  value={targetDays}
-                  onChange={(e) => setTargetDays(e.target.value)}
-                  disabled={savingDays}
-                />
-
-                {/* Quick adjustments */}
-                <div className="flex flex-wrap gap-1.5">
-                  {['7', '14', '21', '30', '60'].map(d => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => setTargetDays(d)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${targetDays === d ? 'bg-[#d4ff00] text-black' : 'bg-zinc-950 text-zinc-400 border border-zinc-800'}`}
-                    >
-                      {d} Days
-                    </button>
-                  ))}
-                </div>
-
-                <Button 
-                  variant="primary" 
-                  className="w-full py-3 text-xs shadow-md mt-2"
-                  onClick={handleSaveDaysLeft}
-                  disabled={savingDays || targetDaysNum <= 0}
-                >
-                  {savingDays ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" /> SAVING EXPIRATION...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="w-4 h-4" /> SAVE {targetDaysNum} DAYS REMAINING
-                    </>
-                  )}
-                </Button>
-             </div>
-           )}
 
            {/* Renew Plan Action Box */}
            <div className="bg-zinc-950/80 p-4 rounded-xl border border-zinc-800 space-y-3 mb-5">
@@ -260,7 +164,7 @@ export const MemberDetailScreen = ({
                     onClick={() => setRenewAmount(preset.amount)}
                     className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${renewAmount === preset.amount ? 'bg-[#d4ff00] text-black shadow' : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:border-zinc-700'}`}
                   >
-                    {preset.label} (₱{parseInt(preset.amount).toLocaleString()})
+                    {preset.label} ({parseInt(preset.amount).toLocaleString()})
                   </button>
                 ))}
               </div>
@@ -277,7 +181,7 @@ export const MemberDetailScreen = ({
                   </>
                 ) : (
                   <>
-                    <RefreshCw className="w-4 h-4" /> RENEW (+{renewMonths} {renewMonths === 1 ? 'MO' : 'MOS'} • ₱{renewAmountNum.toLocaleString()})
+                    <RefreshCw className="w-4 h-4" /> RENEW (+{renewMonths} {renewMonths === 1 ? 'MO' : 'MOS'} • {renewAmountNum.toLocaleString()})
                   </>
                 )}
               </Button>

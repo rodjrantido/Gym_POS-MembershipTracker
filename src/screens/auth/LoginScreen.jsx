@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Dumbbell, User, Lock, AlertCircle, Loader2 } from 'lucide-react';
+import { Box, User, Lock, AlertCircle, Loader2 } from 'lucide-react';
 import { THEME } from '../../constants/theme';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
@@ -30,7 +30,7 @@ export const LoginScreen = ({ onLogin }) => {
       <div className="w-full max-w-sm space-y-8">
         <div className="text-center space-y-2">
           <div className="w-16 h-16 bg-[#d4ff00] rounded-2xl mx-auto flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(212,255,0,0.3)]">
-            <Dumbbell className="w-8 h-8 text-black" />
+            <Box className="w-8 h-8 text-black" />
           </div>
           <h1 className="text-3xl font-black uppercase tracking-tighter text-zinc-100">KUYAJEFF'S GYM</h1>
           <p className="text-[10px] font-bold text-[#d4ff00] uppercase tracking-widest">User Login</p>

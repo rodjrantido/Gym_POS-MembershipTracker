@@ -85,7 +85,8 @@ export default function App() {
             wasUnpaid: t.was_unpaid || Boolean(t.paid_date),
             paidDate: t.paid_date,
             paidTime: t.paid_time,
-            items: t.items || []
+            items: t.items || [],
+            createdAt: t.created_at
           }))
       }));
 
@@ -104,7 +105,8 @@ export default function App() {
             wasUnpaid: t.was_unpaid || Boolean(t.paid_date),
             paidDate: t.paid_date,
             paidTime: t.paid_time,
-            items: t.items || []
+            items: t.items || [],
+            createdAt: t.created_at
           }))
       }));
 
@@ -408,10 +410,9 @@ export default function App() {
       totalAmount: totalAmount,
       status: paymentStatus,
       wasUnpaid: paymentStatus === 'UNPAID',
-      items: cart.map(item => ({ name: item.name, qty: item.qty, price: parseFloat(item.price) }))
+      items: cart.map(item => ({ name: item.name, qty: item.qty, price: parseFloat(item.price) })),
+      createdAt: now.toISOString(),
     };
-
-    // 1. Insert transaction into Supabase
     try {
       await insertTransaction(transaction);
     } catch (err) {
@@ -522,6 +523,7 @@ export default function App() {
             onClearCart={() => setCart([])} 
             onCheckout={handleCheckout} 
             onLogout={handleLogout} 
+            onMarkPaid={handleMarkPaid}
           />
         );
       case 'select_customer':

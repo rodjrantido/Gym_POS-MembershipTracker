@@ -21,7 +21,7 @@ export const DayPassScreen = ({ dayPassers, navigate }) => {
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 pb-24">
       <Header 
-        title="DAY PASS TRACKER" 
+        title="DAY PASS LIST" 
         subtitle="Manage Visitors" 
         rightAction={
           <Button onClick={() => navigate('add_daypass')} className="py-2 px-3 text-sm">

@@ -36,7 +36,7 @@ export const MembersScreen = ({ members, navigate }) => {
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 pb-24">
       <Header 
-        title="MEMBERS DIRECTORY" 
+        title="MEMBERS LIST" 
         subtitle="Manage Active Members" 
         rightAction={
           <Button onClick={() => navigate('add_member')} className="py-2 px-3 text-sm">

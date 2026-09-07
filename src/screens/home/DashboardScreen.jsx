@@ -1,6 +1,7 @@
-import { ShoppingBag, Users, AlertCircle, Plus, LogOut } from 'lucide-react';
+import { ShoppingBag, Users, AlertCircle, Plus, LogOut, Calendar, Clock, CheckCircle, ChevronRight, AlertTriangle } from 'lucide-react';
 import { THEME } from '../../constants/theme';
 import Button from '../../components/Button';
+import Badge from '../../components/Badge';
 import EmptyState from '../../components/EmptyState';
 
 export const DashboardScreen = ({ 
@@ -12,10 +13,36 @@ export const DashboardScreen = ({
   navigate, 
   onClearCart, 
   onCheckout,
-  onLogout 
+  onLogout,
+  onMarkPaid 
 }) => {
   const activeMembersCount = members.filter(m => m.status === 'ACTIVE').length;
   const lowStockCount = inventory.filter(i => i.stock <= i.threshold).length;
+
+  // Extract all unpaid purchases by members, arranged from latest to oldest
+  const unpaidMemberPurchases = members.flatMap(member => 
+    (member.purchaseHistory || [])
+      .filter(record => record.status === 'UNPAID')
+      .map(record => ({
+        ...record,
+        member,
+      }))
+  ).sort((a, b) => {
+    const getTime = (t) => {
+      if (t.createdAt) {
+        const parsed = new Date(t.createdAt).getTime();
+        if (!isNaN(parsed)) return parsed;
+      }
+      if (t.date) {
+        const parsed = new Date(`${t.date} ${t.time || ''}`).getTime();
+        if (!isNaN(parsed)) return parsed;
+      }
+      return 0;
+    };
+    return getTime(b) - getTime(a);
+  });
+
+  const totalUnpaidAmount = unpaidMemberPurchases.reduce((sum, item) => sum + (parseFloat(item.totalAmount) || 0), 0);
 
   return (
     <div className="animate-in fade-in duration-300 pb-24">
@@ -92,8 +119,16 @@ export const DashboardScreen = ({
             className={`p-3.5 rounded-xl border flex justify-between items-center cursor-pointer transition-all ${activeCustomer ? 'border-[#d4ff00]/40 bg-[#d4ff00]/5' : 'border-zinc-800 bg-zinc-900/40 hover:border-zinc-700'}`}
           >
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-xs">
-                {activeCustomer ? activeCustomer.name.substring(0,2).toUpperCase() : <Users className="w-4 h-4 text-zinc-400"/>}
+              <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-xs overflow-hidden">
+                {activeCustomer ? (
+                  activeCustomer.photoUrl || activeCustomer.photo_url ? (
+                    <img src={activeCustomer.photoUrl || activeCustomer.photo_url} alt={activeCustomer.name} className="w-full h-full object-cover" />
+                  ) : (
+                    activeCustomer.name.substring(0, 2).toUpperCase()
+                  )
+                ) : (
+                  <Users className="w-4 h-4 text-zinc-400"/>
+                )}
               </div>
               <div>
                 <p className="text-xs font-bold text-zinc-200">
@@ -164,6 +199,135 @@ export const DashboardScreen = ({
               </Button>
             </div>
           </div>
+        </div>
+
+        {/* Unpaid Member Purchases Section (Arranged Latest to Oldest) */}
+        <div className={`${THEME.card} border ${THEME.border} rounded-2xl p-5 space-y-4`}>
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400">
+                <AlertTriangle className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="font-black text-sm uppercase tracking-wider text-zinc-100">
+                  Unpaid Member Purchases
+                </h2>
+                <p className="text-[10px] text-zinc-500 uppercase tracking-widest">
+                  Latest to oldest
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {unpaidMemberPurchases.length > 0 && (
+                <span className="font-mono text-xs font-black text-[#d4ff00]">
+                  ₱{totalUnpaidAmount.toFixed(2)}
+                </span>
+              )}
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${unpaidMemberPurchases.length > 0 ? 'bg-red-500/15 text-red-400 border border-red-500/30' : 'bg-zinc-800 text-zinc-500'}`}>
+                {unpaidMemberPurchases.length} Pending
+              </span>
+            </div>
+          </div>
+
+          {unpaidMemberPurchases.length === 0 ? (
+            <div className="py-6 px-4 rounded-xl bg-zinc-900/30 border border-zinc-800/60 flex flex-col items-center justify-center text-center">
+              <div className="w-10 h-10 rounded-full bg-[#d4ff00]/10 border border-[#d4ff00]/20 flex items-center justify-center text-[#d4ff00] mb-2">
+                <CheckCircle className="w-5 h-5" />
+              </div>
+              <p className="text-xs font-bold text-zinc-300">All Purchases Paid</p>
+              <p className="text-[11px] text-zinc-500 mt-0.5">No members currently have unpaid balances.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {unpaidMemberPurchases.map((record) => (
+                <div 
+                  key={record.transactionId}
+                  className="p-3.5 rounded-xl bg-zinc-900/60 border border-red-500/25 hover:border-red-500/40 transition-all space-y-3"
+                >
+                  {/* Member Info & Amount Header */}
+                  <div className="flex justify-between items-start">
+                    <div 
+                      onClick={() => navigate('member_detail', { member: record.member })}
+                      className="flex items-center gap-3 cursor-pointer group flex-1 mr-2"
+                      title="View member profile"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center font-bold text-xs overflow-hidden shrink-0 shadow-inner">
+                        {record.member.photoUrl || record.member.photo_url ? (
+                          <img 
+                            src={record.member.photoUrl || record.member.photo_url} 
+                            alt={record.member.name} 
+                            className="w-full h-full object-cover" 
+                          />
+                        ) : (
+                          <span className="text-zinc-400">{record.member.name.substring(0, 2).toUpperCase()}</span>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-sm text-zinc-100 group-hover:text-[#d4ff00] transition-colors flex items-center gap-1 truncate">
+                          {record.member.name}
+                          <ChevronRight className="w-3.5 h-3.5 text-zinc-500 group-hover:text-[#d4ff00] transition-transform group-hover:translate-x-0.5 shrink-0" />
+                        </h4>
+                        <p className="text-[10px] text-zinc-400 truncate mt-0.5">
+                          <span className="font-mono text-zinc-500">{record.member.id}</span>
+                          {record.member.phone && ` • ${record.member.phone}`}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end shrink-0">
+                      <span className="font-mono font-black text-base text-[#d4ff00]">
+                        ₱{record.totalAmount.toFixed(2)}
+                      </span>
+                      <div className="mt-1">
+                        <Badge status="UNPAID" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Items Breakdown & Purchase Timestamp */}
+                  <div className="bg-zinc-950/70 p-2.5 rounded-lg border border-zinc-900/80 flex flex-col sm:flex-row justify-between sm:items-center gap-1.5 text-xs">
+                    <div className="text-zinc-300 truncate">
+                      {record.items && record.items.length > 0 ? (
+                        <span>
+                          {record.items.map((i, idx) => (
+                            <span key={idx} className="mr-2">
+                              <strong className="text-zinc-200">{i.qty}x</strong> {i.name}
+                            </span>
+                          ))}
+                        </span>
+                      ) : (
+                        <span className="text-zinc-500 italic">Custom Order</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-mono shrink-0">
+                      <Calendar className="w-3 h-3 text-zinc-600" />
+                      <span>{record.date}</span>
+                      {record.time && (
+                        <>
+                          <Clock className="w-3 h-3 text-zinc-600 ml-1" />
+                          <span>{record.time}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Mark as Paid Action Button */}
+                  {onMarkPaid && (
+                    <div className="pt-0.5">
+                      <button
+                        type="button"
+                        onClick={() => onMarkPaid(record.transactionId)}
+                        className="w-full py-2.5 bg-[#d4ff00] hover:bg-[#bce600] active:scale-[0.98] text-black font-bold text-xs uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 shadow-[0_0_12px_rgba(212,255,0,0.15)]"
+                      >
+                        <CheckCircle className="w-3.5 h-3.5 text-black" /> Mark as Paid
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
