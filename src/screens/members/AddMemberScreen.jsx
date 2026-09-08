@@ -6,6 +6,8 @@ import Button from '../../components/Button';
 import Input from '../../components/Input';
 import CameraCaptureModal from '../../components/CameraCaptureModal';
 
+import { getLocalDateString, addDaysToDate, formatDateDisplay } from '../../utils/dateUtils';
+
 export const AddMemberScreen = ({ navigate, onSave }) => {
   const [memberType, setMemberType] = useState('NEW'); // 'NEW' (paying standard plan) or 'EXISTING' (custom days left)
   const [formData, setFormData] = useState({ 
@@ -37,9 +39,8 @@ export const AddMemberScreen = ({ navigate, onSave }) => {
     : `Existing Plan (${calculatedDays} Days Left)`;
 
   const now = new Date();
-  const expiryDateObj = new Date(now.getTime() + calculatedDays * 24 * 60 * 60 * 1000);
-  const expiryDateISO = expiryDateObj.toISOString().split('T')[0];
-  const expiryDateFormatted = expiryDateObj.toLocaleDateString();
+  const expiryDateISO = addDaysToDate(now, calculatedDays);
+  const expiryDateFormatted = formatDateDisplay(expiryDateISO);
 
   const handleCapturePhoto = (file) => {
     setPhotoFile(file);
@@ -50,7 +51,7 @@ export const AddMemberScreen = ({ navigate, onSave }) => {
     if (!formData.name) return;
     setSaving(true);
     try {
-      const startDate = new Date().toISOString().split('T')[0];
+      const startDate = getLocalDateString(now);
       
       await onSave({
         name: formData.name,

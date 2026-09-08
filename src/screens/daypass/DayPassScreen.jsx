@@ -7,14 +7,17 @@ import Input from '../../components/Input';
 import Badge from '../../components/Badge';
 import EmptyState from '../../components/EmptyState';
 
+import { getLocalDateString } from '../../utils/dateUtils';
+
 export const DayPassScreen = ({ dayPassers, navigate }) => {
   const [search, setSearch] = useState('');
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
   const [filterDate, setFilterDate] = useState(today);
   
   const filteredPassers = dayPassers.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
-    const matchesDate = !filterDate || p.rawDate === filterDate;
+    const passerLocalDate = p.rawDate || (p.date ? getLocalDateString(p.date) : '');
+    const matchesDate = !filterDate || passerLocalDate === filterDate;
     return matchesSearch && matchesDate;
   });
 

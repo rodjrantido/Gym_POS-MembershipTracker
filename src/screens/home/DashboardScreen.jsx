@@ -3,6 +3,7 @@ import { THEME } from '../../constants/theme';
 import Button from '../../components/Button';
 import Badge from '../../components/Badge';
 import EmptyState from '../../components/EmptyState';
+import { getMemberStatus } from '../../utils/dateUtils';
 
 export const DashboardScreen = ({ 
   cart, 
@@ -16,7 +17,7 @@ export const DashboardScreen = ({
   onLogout,
   onMarkPaid 
 }) => {
-  const activeMembersCount = members.filter(m => m.status === 'ACTIVE').length;
+  const activeMembersCount = members.filter(m => getMemberStatus(m) === 'ACTIVE').length;
   const lowStockCount = inventory.filter(i => i.stock <= i.threshold).length;
 
   // Extract all unpaid purchases by members, arranged from latest to oldest

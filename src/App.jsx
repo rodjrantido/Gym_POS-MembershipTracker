@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { THEME } from './constants/theme';
 import BottomNav from './components/BottomNav';
+import { getLocalDateString, addDaysToDate, parseLocalDate } from './utils/dateUtils';
 
 // API Services
 import {
@@ -240,8 +241,8 @@ export default function App() {
       phone: memberData.phone,
       plan: memberData.plan || (months === 1 ? '1 Month (₱500)' : `${months} Months (₱${amountPaid})`),
       status: 'ACTIVE',
-      startDate: memberData.startDate || now.toISOString().split('T')[0],
-      expiresAt: memberData.expiresAt || new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      startDate: memberData.startDate || getLocalDateString(now),
+      expiresAt: memberData.expiresAt || addDaysToDate(now, 30),
       photoUrl: photoUrl,
       purchaseHistory: initialTransaction ? [initialTransaction] : []
     };
@@ -301,9 +302,10 @@ export default function App() {
 
     // Calculate new expiration (+renewDays from current expiry or today, whichever is later)
     const today = new Date();
-    const currentExpiry = member.expiresAt ? new Date(member.expiresAt) : today;
+    today.setHours(0, 0, 0, 0);
+    const currentExpiry = member.expiresAt ? parseLocalDate(member.expiresAt) : today;
     const baseDate = currentExpiry > today ? currentExpiry : today;
-    const newExpiry = new Date(baseDate.getTime() + renewDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const newExpiry = addDaysToDate(baseDate, renewDays);
 
     const now = new Date();
     const renewalTransaction = {
@@ -357,7 +359,7 @@ export default function App() {
     const newPasser = {
       ...passData,
       id: `dp_${Date.now()}`,
-      rawDate: now.toISOString().split('T')[0],
+      rawDate: getLocalDateString(now),
       date: now.toLocaleDateString(),
       time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       status: 'ACTIVE',

@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { getLocalDateString, addDaysToDate } from '../utils/dateUtils';
 
 // ==========================================
 // === AUTHENTICATION API ===
@@ -222,8 +223,8 @@ export async function insertMember(member) {
         phone: member.phone,
         plan: member.plan || 'Monthly (₱500)',
         status: member.status || 'ACTIVE',
-        start_date: member.startDate || new Date().toISOString().split('T')[0],
-        expires_at: member.expiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        start_date: member.startDate || getLocalDateString(),
+        expires_at: member.expiresAt || addDaysToDate(new Date(), 30),
         photo_url: member.photoUrl || null,
       }
     ])

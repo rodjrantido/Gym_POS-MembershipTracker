@@ -7,26 +7,14 @@ import Input from '../../components/Input';
 import Badge from '../../components/Badge';
 import EmptyState from '../../components/EmptyState';
 
+import { getMemberStatus, formatDateDisplay } from '../../utils/dateUtils';
+
 export const MembersScreen = ({ members, navigate }) => {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('ALL'); // ALL, ACTIVE, EXPIRING SOON, EXPIRED
 
-  // Helper to compute member status based on current date and expiresAt
-  const getMemberComputedStatus = (member) => {
-    if (!member.expiresAt && !member.expires_at) return member.status || 'ACTIVE';
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const expiryDate = new Date(member.expiresAt || member.expires_at);
-    const diffTime = expiryDate.getTime() - today.getTime();
-    const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (daysRemaining <= 0) return 'EXPIRED';
-    if (daysRemaining <= 5) return 'EXPIRING SOON';
-    return 'ACTIVE';
-  };
-
   const filteredMembers = members.filter(m => {
-    const computedStatus = getMemberComputedStatus(m);
+    const computedStatus = getMemberStatus(m);
     const matchesSearch = m.name.toLowerCase().includes(search.toLowerCase()) || 
                           m.id.toLowerCase().includes(search.toLowerCase());
     const matchesFilter = filter === 'ALL' || computedStatus === filter;
@@ -82,9 +70,9 @@ export const MembersScreen = ({ members, navigate }) => {
             />
           ) : (
             filteredMembers.map(member => {
-              const status = getMemberComputedStatus(member);
+              const status = getMemberStatus(member);
               const expiryFormatted = (member.expiresAt || member.expires_at) 
-                ? new Date(member.expiresAt || member.expires_at).toLocaleDateString() 
+                ? formatDateDisplay(member.expiresAt || member.expires_at) 
                 : null;
 
               return (

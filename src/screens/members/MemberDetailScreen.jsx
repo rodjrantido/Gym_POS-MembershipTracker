@@ -1,43 +1,41 @@
 import { useState } from 'react';
-import { Trash2, Camera, Calendar, RefreshCw, Loader2 } from 'lucide-react';
+import { Trash2, Camera, Calendar, RefreshCw, Loader2, Clock, Check, Edit3 } from 'lucide-react';
 import { THEME } from '../../constants/theme';
 import Header from '../../components/Header';
 import Button from '../../components/Button';
 import Badge from '../../components/Badge';
+import Input from '../../components/Input';
 import PurchaseHistoryList from '../../components/PurchaseHistoryList';
 import CameraCaptureModal from '../../components/CameraCaptureModal';
+import { calculateDaysRemaining, getMemberStatus, formatDateDisplay, addDaysToDate } from '../../utils/dateUtils';
 
-export const MemberDetailScreen = ({ member, navigate, onDelete, onMarkPaid, onRenew, onUpdatePhoto }) => {
+export const MemberDetailScreen = ({ 
+  member, 
+  navigate, 
+  onDelete, 
+  onMarkPaid, 
+  onRenew, 
+  onUpdatePhoto,
+  onUpdateExpiration 
+}) => {
   const [renewing, setRenewing] = useState(false);
   const [renewAmount, setRenewAmount] = useState('500');
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
+  // Direct Days Left Adjustment State
+  const [isAdjustingDays, setIsAdjustingDays] = useState(false);
+  const [savingDays, setSavingDays] = useState(false);
+  const [targetDays, setTargetDays] = useState('30');
+
   if (!member) return null;
 
-  // Calculate Expiration & Status
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  let daysRemaining = 0;
-  let isExpired = false;
-  let isExpiringSoon = false;
-  let expiryDateFormatted = 'N/A';
-
-  if (member.expiresAt || member.expires_at) {
-    const expiryDate = new Date(member.expiresAt || member.expires_at);
-    expiryDateFormatted = expiryDate.toLocaleDateString();
-    const diffTime = expiryDate.getTime() - today.getTime();
-    daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (daysRemaining <= 0) {
-      isExpired = true;
-    } else if (daysRemaining <= 5) {
-      isExpiringSoon = true;
-    }
-  }
-
-  const computedStatus = isExpired ? 'EXPIRED' : (isExpiringSoon ? 'EXPIRING SOON' : 'ACTIVE');
+  // Calculate Expiration & Status safely without timezone off-by-one error
+  const daysRemaining = calculateDaysRemaining(member.expiresAt || member.expires_at);
+  const computedStatus = getMemberStatus(member);
+  const isExpired = computedStatus === 'EXPIRED';
+  const isExpiringSoon = computedStatus === 'EXPIRING SOON';
+  const expiryDateFormatted = formatDateDisplay(member.expiresAt || member.expires_at);
 
   // Multi-month renewal calculations (₱500 = 1 month / 30 days)
   const renewAmountNum = Math.max(0, parseFloat(renewAmount) || 0);
@@ -65,6 +63,22 @@ export const MemberDetailScreen = ({ member, navigate, onDelete, onMarkPaid, onR
       } finally {
         setUploadingPhoto(false);
       }
+    }
+  };
+
+  // Adjust remaining days calculations safely in local time
+  const targetDaysNum = parseInt(targetDays, 10) || 0;
+  const newAdjustedDateISO = addDaysToDate(new Date(), targetDaysNum);
+  const newAdjustedDateFormatted = formatDateDisplay(newAdjustedDateISO);
+
+  const handleSaveDaysLeft = async () => {
+    if (targetDaysNum <= 0 || !onUpdateExpiration) return;
+    setSavingDays(true);
+    try {
+      await onUpdateExpiration(member.id, newAdjustedDateISO);
+      setIsAdjustingDays(false);
+    } finally {
+      setSavingDays(false);
     }
   };
 
@@ -120,7 +134,7 @@ export const MemberDetailScreen = ({ member, navigate, onDelete, onMarkPaid, onR
            </div>
            
            {/* Plan & Status Card */}
-           <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 mb-5 space-y-3">
+           <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 mb-4 space-y-3">
               <div className="flex justify-between items-center">
                 <div>
                   <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-0.5">Current Plan</p>
@@ -147,7 +161,71 @@ export const MemberDetailScreen = ({ member, navigate, onDelete, onMarkPaid, onR
                   )}
                 </div>
               </div>
+
+              {/* Toggle Manual Days Left Adjustment */}
+              <div className="pt-2 border-t border-zinc-900 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsAdjustingDays(!isAdjustingDays)}
+                  className="text-xs text-[#d4ff00] font-bold hover:underline flex items-center gap-1"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  {isAdjustingDays ? 'Close Adjustment' : 'Adjust Days Remaining'}
+                </button>
+              </div>
            </div>
+
+           {/* Manual Days Left Adjustment Box */}
+           {isAdjustingDays && (
+             <div className="bg-zinc-900/90 p-4 rounded-xl border border-[#d4ff00]/30 space-y-3 mb-5 animate-in fade-in duration-200">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-[#d4ff00]" /> Set Remaining Days
+                  </span>
+                  <span className="text-[10px] text-zinc-400">Expires: <strong className="text-zinc-200">{newAdjustedDateFormatted}</strong></span>
+                </div>
+
+                <Input 
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 15"
+                  value={targetDays}
+                  onChange={(e) => setTargetDays(e.target.value)}
+                  disabled={savingDays}
+                />
+
+                {/* Quick adjustments */}
+                <div className="flex flex-wrap gap-1.5">
+                  {['7', '14', '21', '30', '60'].map(d => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setTargetDays(d)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${targetDays === d ? 'bg-[#d4ff00] text-black' : 'bg-zinc-950 text-zinc-400 border border-zinc-800'}`}
+                    >
+                      {d} Days
+                    </button>
+                  ))}
+                </div>
+
+                <Button 
+                  variant="primary" 
+                  className="w-full py-3 text-xs shadow-md mt-2"
+                  onClick={handleSaveDaysLeft}
+                  disabled={savingDays || targetDaysNum <= 0}
+                >
+                  {savingDays ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" /> SAVING EXPIRATION...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" /> SAVE {targetDaysNum} DAYS REMAINING
+                    </>
+                  )}
+                </Button>
+             </div>
+           )}
 
            {/* Renew Plan Action Box */}
            <div className="bg-zinc-950/80 p-4 rounded-xl border border-zinc-800 space-y-3 mb-5">
@@ -164,7 +242,7 @@ export const MemberDetailScreen = ({ member, navigate, onDelete, onMarkPaid, onR
                     onClick={() => setRenewAmount(preset.amount)}
                     className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${renewAmount === preset.amount ? 'bg-[#d4ff00] text-black shadow' : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:border-zinc-700'}`}
                   >
-                    {preset.label} ({parseInt(preset.amount).toLocaleString()})
+                    {preset.label} (₱{parseInt(preset.amount).toLocaleString()})
                   </button>
                 ))}
               </div>
@@ -181,7 +259,7 @@ export const MemberDetailScreen = ({ member, navigate, onDelete, onMarkPaid, onR
                   </>
                 ) : (
                   <>
-                    <RefreshCw className="w-4 h-4" /> RENEW (+{renewMonths} {renewMonths === 1 ? 'MO' : 'MOS'} • {renewAmountNum.toLocaleString()})
+                    <RefreshCw className="w-4 h-4" /> RENEW (+{renewMonths} {renewMonths === 1 ? 'MO' : 'MOS'} • ₱{renewAmountNum.toLocaleString()})
                   </>
                 )}
               </Button>
