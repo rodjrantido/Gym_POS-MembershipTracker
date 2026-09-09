@@ -1,6 +1,7 @@
 export const Badge = ({ status }) => {
   const styles = {
     'ACTIVE': 'bg-[#d4ff00]/10 text-[#d4ff00] border border-[#d4ff00]/20',
+    'PAUSED': 'bg-blue-500/10 text-blue-400 border border-blue-500/30',
     'EXPIRING SOON': 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20',
     'EXPIRED': 'bg-red-500/10 text-red-500 border border-red-500/20',
     'PAID': 'text-[#d4ff00] bg-[#d4ff00]/10 border border-[#d4ff00]/20',

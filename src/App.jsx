@@ -1,7 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { THEME } from './constants/theme';
 import BottomNav from './components/BottomNav';
-import { getLocalDateString, addDaysToDate, parseLocalDate } from './utils/dateUtils';
+import { 
+  getLocalDateString, 
+  addDaysToDate, 
+  parseLocalDate, 
+  calculateDaysRemaining, 
+  calculateDaysBetween, 
+  getMemberPauseInfo 
+} from './utils/dateUtils';
 
 // API Services
 import {
@@ -14,6 +21,8 @@ import {
   insertMember,
   renewMemberPlan,
   updateMemberExpiration,
+  pauseMemberPlan,
+  unpauseMemberPlan,
   updateMemberPhoto,
   deleteMember,
   uploadMemberPhoto,
@@ -179,7 +188,17 @@ export default function App() {
 
   // Inventory actions
   const handleSaveItem = async (itemData) => {
-    const newItem = { ...itemData, id: `item_${Date.now()}` };
+    // Prevent duplicate product names (case-insensitive)
+    const trimmedName = (itemData.name || '').trim();
+    const isDuplicate = inventory.some(
+      i => i.name.trim().toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (isDuplicate) {
+      alert(`A product named "${trimmedName}" already exists. Please specify a unique name (e.g. "${trimmedName} (Variant)").`);
+      return;
+    }
+
+    const newItem = { ...itemData, name: trimmedName, id: `item_${Date.now()}` };
     try {
       await insertInventoryItem(newItem);
       setInventory(prev => [...prev, newItem]);
@@ -188,6 +207,23 @@ export default function App() {
       setInventory(prev => [...prev, newItem]);
     }
     navigate('stocks');
+  };
+
+  const handleRestockItem = async (itemId, addedQty) => {
+    const item = inventory.find(i => i.id === itemId);
+    if (!item) return;
+
+    const currentStock = parseInt(item.stock, 10) || 0;
+    const qty = parseInt(addedQty, 10) || 0;
+    const newStock = Math.max(0, currentStock + qty);
+
+    try {
+      await updateItemStock(itemId, newStock);
+    } catch (err) {
+      console.warn('Could not update stock in Supabase:', err);
+    }
+
+    setInventory(prev => prev.map(i => i.id === itemId ? { ...i, stock: String(newStock) } : i));
   };
 
   const handleDeleteItem = async (id) => {
@@ -336,6 +372,66 @@ export default function App() {
           expiresAt: newExpiry,
           status: 'ACTIVE',
           purchaseHistory: [renewalTransaction, ...(m.purchaseHistory || [])]
+        };
+      }
+      return m;
+    }));
+  };
+
+  const handlePauseMember = async (memberId) => {
+    const member = members.find(m => m.id === memberId);
+    if (!member) return;
+
+    const remainingDays = calculateDaysRemaining(member.expiresAt || member.expires_at);
+    const todayStr = getLocalDateString();
+    const pauseStatus = `PAUSED:${todayStr}:${Math.max(0, remainingDays)}`;
+
+    try {
+      await pauseMemberPlan(memberId, pauseStatus);
+    } catch (err) {
+      console.warn('Could not pause member in Supabase:', err);
+    }
+
+    setMembers(prev => prev.map(m => {
+      if (m.id === memberId) {
+        return {
+          ...m,
+          status: pauseStatus,
+        };
+      }
+      return m;
+    }));
+  };
+
+  const handleUnpauseMember = async (memberId) => {
+    const member = members.find(m => m.id === memberId);
+    if (!member) return;
+
+    const pauseInfo = getMemberPauseInfo(member);
+    const todayStr = getLocalDateString();
+    let newExpiresAt;
+
+    if (pauseInfo && pauseInfo.savedRemainingDays !== null) {
+      newExpiresAt = addDaysToDate(new Date(), pauseInfo.savedRemainingDays);
+    } else if (pauseInfo && pauseInfo.pausedDate) {
+      const daysPaused = calculateDaysBetween(pauseInfo.pausedDate, todayStr);
+      newExpiresAt = addDaysToDate(member.expiresAt || member.expires_at, daysPaused);
+    } else {
+      newExpiresAt = member.expiresAt || member.expires_at || addDaysToDate(new Date(), 30);
+    }
+
+    try {
+      await unpauseMemberPlan(memberId, newExpiresAt);
+    } catch (err) {
+      console.warn('Could not unpause member in Supabase:', err);
+    }
+
+    setMembers(prev => prev.map(m => {
+      if (m.id === memberId) {
+        return {
+          ...m,
+          status: 'ACTIVE',
+          expiresAt: newExpiresAt,
         };
       }
       return m;
@@ -564,6 +660,8 @@ export default function App() {
             onRenew={handleRenewMember}
             onUpdatePhoto={handleUpdateMemberPhoto}
             onUpdateExpiration={handleUpdateMemberExpiration}
+            onPauseMember={handlePauseMember}
+            onUnpauseMember={handleUnpauseMember}
           />
         );
       }
@@ -605,6 +703,7 @@ export default function App() {
             inventory={inventory} 
             navigate={navigate} 
             onQuickSell={handleQuickSell} 
+            onRestock={handleRestockItem}
           />
         );
       case 'item_detail': 
@@ -618,6 +717,7 @@ export default function App() {
       case 'add_item': 
         return (
           <AddItemScreen 
+            inventory={inventory}
             navigate={navigate} 
             onSave={handleSaveItem} 
           />

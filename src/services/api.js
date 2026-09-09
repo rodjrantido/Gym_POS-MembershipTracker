@@ -256,6 +256,41 @@ export async function renewMemberPlan(memberId, newExpiresAt) {
   return data;
 }
 
+export async function pauseMemberPlan(memberId, pauseStatus) {
+  const { data, error } = await supabase
+    .from('members')
+    .update({
+      status: pauseStatus,
+    })
+    .eq('id', memberId)
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error pausing member plan:', error);
+    throw error;
+  }
+  return data;
+}
+
+export async function unpauseMemberPlan(memberId, newExpiresAt) {
+  const { data, error } = await supabase
+    .from('members')
+    .update({
+      expires_at: newExpiresAt,
+      status: 'ACTIVE',
+    })
+    .eq('id', memberId)
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error unpausing member plan:', error);
+    throw error;
+  }
+  return data;
+}
+
 export async function updateMemberExpiration(memberId, newExpiresAt) {
   const { data, error } = await supabase
     .from('members')
@@ -273,6 +308,7 @@ export async function updateMemberExpiration(memberId, newExpiresAt) {
   }
   return data;
 }
+
 
 
 export async function updateMemberPhoto(memberId, photoUrl) {

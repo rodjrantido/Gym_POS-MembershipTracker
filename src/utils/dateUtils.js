@@ -61,6 +61,19 @@ export function addDaysToDate(baseDateInput, days = 30) {
 }
 
 /**
+ * Calculates days between two date inputs in local calendar days.
+ */
+export function calculateDaysBetween(startDateInput, endDateInput) {
+  if (!startDateInput || !endDateInput) return 0;
+  const start = parseLocalDate(startDateInput);
+  start.setHours(0, 0, 0, 0);
+  const end = parseLocalDate(endDateInput);
+  end.setHours(0, 0, 0, 0);
+  const diffMs = end.getTime() - start.getTime();
+  return Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+}
+
+/**
  * Accurately calculates days remaining until an expiration date.
  * Both dates are normalized to local midnight to avoid fractional day / timezone errors.
  */
@@ -77,9 +90,30 @@ export function calculateDaysRemaining(expiryDateInput) {
 }
 
 /**
- * Returns member status: 'EXPIRED', 'EXPIRING SOON' (<= 5 days), or 'ACTIVE'.
+ * Parses pause metadata if status is encoded as 'PAUSED:YYYY-MM-DD:remainingDays'
+ */
+export function getMemberPauseInfo(member) {
+  const statusStr = member?.status || '';
+  if (!statusStr.startsWith('PAUSED')) return null;
+
+  const parts = statusStr.split(':');
+  const pausedDate = parts[1] || null;
+  const savedRemainingDays = parts[2] ? parseInt(parts[2], 10) : null;
+
+  return {
+    isPaused: true,
+    pausedDate,
+    savedRemainingDays,
+  };
+}
+
+/**
+ * Returns member status: 'PAUSED', 'EXPIRED', 'EXPIRING SOON' (<= 5 days), or 'ACTIVE'.
  */
 export function getMemberStatus(member) {
+  if (member?.status?.startsWith('PAUSED')) {
+    return 'PAUSED';
+  }
   const expiry = member?.expiresAt || member?.expires_at;
   if (!expiry) return member?.status || 'ACTIVE';
 

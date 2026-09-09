@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Search, Users, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Users, AlertTriangle, PauseCircle } from 'lucide-react';
 import { THEME } from '../../constants/theme';
 import Header from '../../components/Header';
 import Button from '../../components/Button';
@@ -7,11 +7,11 @@ import Input from '../../components/Input';
 import Badge from '../../components/Badge';
 import EmptyState from '../../components/EmptyState';
 
-import { getMemberStatus, formatDateDisplay } from '../../utils/dateUtils';
+import { getMemberStatus, formatDateDisplay, getMemberPauseInfo } from '../../utils/dateUtils';
 
 export const MembersScreen = ({ members, navigate }) => {
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('ALL'); // ALL, ACTIVE, EXPIRING SOON, EXPIRED
+  const [filter, setFilter] = useState('ALL'); // ALL, ACTIVE, PAUSED, EXPIRING SOON, EXPIRED
 
   const filteredMembers = members.filter(m => {
     const computedStatus = getMemberStatus(m);
@@ -20,6 +20,14 @@ export const MembersScreen = ({ members, navigate }) => {
     const matchesFilter = filter === 'ALL' || computedStatus === filter;
     return matchesSearch && matchesFilter;
   });
+
+  const filterTabs = [
+    { key: 'ALL', label: 'ALL' },
+    { key: 'ACTIVE', label: 'ACTIVE' },
+    { key: 'PAUSED', label: 'PAUSED' },
+    { key: 'EXPIRING SOON', label: 'SOON' },
+    { key: 'EXPIRED', label: 'EXPIRED' }
+  ];
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 pb-24">
@@ -42,14 +50,14 @@ export const MembersScreen = ({ members, navigate }) => {
         />
 
         {/* Status Filter Tabs */}
-        <div className="grid grid-cols-4 gap-1.5 p-1 bg-zinc-900 rounded-xl border border-zinc-800 text-[11px] font-bold uppercase">
-          {['ALL', 'ACTIVE', 'EXPIRING SOON', 'EXPIRED'].map(f => (
+        <div className="grid grid-cols-5 gap-1 p-1 bg-zinc-900 rounded-xl border border-zinc-800 text-[10px] font-bold uppercase overflow-x-auto hide-scrollbar">
+          {filterTabs.map(tab => (
             <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`py-2 px-1 rounded-lg transition-all text-center truncate ${filter === f ? 'bg-[#d4ff00] text-black shadow-md' : 'text-zinc-400 hover:text-zinc-200'}`}
+              key={tab.key}
+              onClick={() => setFilter(tab.key)}
+              className={`py-2 px-1 rounded-lg transition-all text-center truncate ${filter === tab.key ? 'bg-[#d4ff00] text-black shadow-md' : 'text-zinc-400 hover:text-zinc-200'}`}
             >
-              {f === 'EXPIRING SOON' ? 'SOON' : f}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -71,6 +79,7 @@ export const MembersScreen = ({ members, navigate }) => {
           ) : (
             filteredMembers.map(member => {
               const status = getMemberStatus(member);
+              const pauseInfo = getMemberPauseInfo(member);
               const expiryFormatted = (member.expiresAt || member.expires_at) 
                 ? formatDateDisplay(member.expiresAt || member.expires_at) 
                 : null;
@@ -99,10 +108,22 @@ export const MembersScreen = ({ members, navigate }) => {
                         {status === 'EXPIRING SOON' && (
                           <AlertTriangle className="w-3.5 h-3.5 text-yellow-400" />
                         )}
+                        {status === 'PAUSED' && (
+                          <PauseCircle className="w-3.5 h-3.5 text-blue-400" />
+                        )}
                       </h3>
                       <p className="text-xs text-zinc-400 mt-0.5">{member.plan}</p>
-                      {expiryFormatted && (
-                        <p className="text-[10px] text-zinc-500 font-mono">Expires: {expiryFormatted}</p>
+                      {status === 'PAUSED' ? (
+                        <p className="text-[10px] text-blue-400 font-medium flex items-center gap-1 mt-0.5">
+                          <span>Paused</span>
+                          {pauseInfo?.savedRemainingDays != null && (
+                            <span>• {pauseInfo.savedRemainingDays} days remaining saved</span>
+                          )}
+                        </p>
+                      ) : (
+                        expiryFormatted && (
+                          <p className="text-[10px] text-zinc-500 font-mono mt-0.5">Expires: {expiryFormatted}</p>
+                        )
                       )}
                     </div>
                   </div>
