@@ -2,7 +2,7 @@
 
 Aiven provides high-performance, enterprise-grade cloud databases. Their **Free Tier PostgreSQL** gives you:
 
-- **5 GB of storage** (10x larger than typical 500MB free tiers).
+- **1 GB of dedicated PostgreSQL storage** (2x larger than Supabase's 500MB free limit).
 - **Zero inactivity pause**: Unlike Supabase Free Tier which sleeps if inactive for 7 days, Aiven services stay continuously online.
 - **Pure Standard PostgreSQL**: Full compatibility with standard SQL, extensions, indexing, and tools.
 
@@ -32,7 +32,7 @@ React Browser App  ──(HTTP / fetch('/api/members'))──>  Vercel Serverles
 1. Go to **[aiven.io](https://aiven.io)** and click **Try free** (sign up with Google or GitHub).
 2. Once inside the Aiven Console, click **Create service**.
 3. Select **PostgreSQL**.
-4. Choose the **Free Plan** (5 GB storage, 1 CPU, 1 GB RAM).
+4. Choose the **Free Plan** (`Free-1-1gb`: 1 GB storage, 1 CPU, 1 GB RAM).
 5. Choose a Cloud Provider and Region closest to you (e.g., _AWS or Google Cloud_ in _Singapore / ap-southeast-1_).
 6. Give your service a name (e.g., `gym-pos-db`).
 7. Click **Create service**. Wait ~2-3 minutes for the service state to change from _Rebuilding_ to _Running_ (green indicator).

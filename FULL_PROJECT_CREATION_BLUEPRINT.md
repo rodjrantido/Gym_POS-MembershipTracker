@@ -369,11 +369,11 @@ export function calculateDaysRemaining(expiryStr) {
 
 ---
 
-## 10. Advanced Alternative: Aiven Free Tier PostgreSQL (5GB Storage & Zero Sleep)
+## 10. Advanced Alternative: Aiven Free Tier PostgreSQL (1GB Storage & Zero Sleep)
 
-If you need larger database storage (5GB vs. 500MB) and want to avoid inactivity pauses:
+If you want double the storage of Supabase (1GB vs. 500MB) and want to avoid inactivity sleep/pauses:
 
-1. **Aiven PostgreSQL Free Tier**: Create a free PostgreSQL cluster at [aiven.io](https://aiven.io).
+1. **Aiven PostgreSQL Free Tier**: Create a free PostgreSQL cluster at [aiven.io](https://aiven.io) (Free-1-1gb plan).
 2. **Serverless API Layer (`api/`)**: Browsers cannot speak raw PostgreSQL TCP. Instead, create lightweight serverless endpoints in `/api/*.js` using `pg.Pool`.
 3. **Local Dev Without Extra Servers**: Use `apiDevMiddleware()` in `vite.config.js` so `npm run dev` handles both frontend and API routes concurrently.
 4. **Vercel Deployment**: In Vercel Project Settings, add `DATABASE_URL` as an environment variable. Vercel automatically deploys your `/api` endpoints as serverless functions.
