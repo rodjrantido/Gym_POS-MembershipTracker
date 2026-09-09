@@ -17,9 +17,14 @@ if (!databaseUrl) {
   process.exit(1);
 }
 
+// Strip sslmode so pg doesn't override rejectUnauthorized with strict verify
+const cleanDbUrl = databaseUrl.replace(/[?&]sslmode=[^&]+/, '');
+
 const pool = new Pool({
-  connectionString: databaseUrl,
-  ssl: { rejectUnauthorized: false },
+  connectionString: cleanDbUrl,
+  ssl: {
+    rejectUnauthorized: false,
+  },
 });
 
 const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
@@ -276,4 +281,3 @@ runMigration().catch((err) => {
   console.error('\n❌ Migration failed:', err);
   process.exit(1);
 });
-
