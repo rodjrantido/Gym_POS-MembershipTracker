@@ -130,7 +130,7 @@ export default function App() {
     }
   }, []);
 
-  // Fetch live data from Supabase on mount and subscribe to Realtime changes
+  // Fetch live data from database on mount and subscribe to Realtime changes
   useEffect(() => {
     let isMounted = true;
 
@@ -203,7 +203,7 @@ export default function App() {
       await insertInventoryItem(newItem);
       setInventory(prev => [...prev, newItem]);
     } catch (err) {
-      console.warn('Could not save to Supabase, updating locally:', err);
+      console.warn('Could not save to database, updating locally:', err);
       setInventory(prev => [...prev, newItem]);
     }
     navigate('stocks');
@@ -220,7 +220,7 @@ export default function App() {
     try {
       await updateItemStock(itemId, newStock);
     } catch (err) {
-      console.warn('Could not update stock in Supabase:', err);
+      console.warn('Could not update stock in database:', err);
     }
 
     setInventory(prev => prev.map(i => i.id === itemId ? { ...i, stock: String(newStock) } : i));
@@ -230,7 +230,7 @@ export default function App() {
     try {
       await deleteInventoryItem(id);
     } catch (err) {
-      console.warn('Could not delete from Supabase, updating locally:', err);
+      console.warn('Could not delete from database, updating locally:', err);
     }
     setInventory(prev => prev.filter(i => i.id !== id));
     navigate('stocks');
@@ -241,7 +241,7 @@ export default function App() {
     const memberId = `#${Math.floor(1000 + Math.random() * 9000)}`;
     let photoUrl = null;
 
-    // Upload photo to Supabase Storage if present
+    // Upload photo to database Storage if present
     if (memberData.photoFile) {
       try {
         photoUrl = await uploadMemberPhoto(memberData.photoFile, memberId);
@@ -291,7 +291,7 @@ export default function App() {
       await Promise.all(promises);
       setMembers(prev => [newMember, ...prev]);
     } catch (err) {
-      console.warn('Could not save member/transaction to Supabase, updating locally:', err);
+      console.warn('Could not save member/transaction to database, updating locally:', err);
       setMembers(prev => [newMember, ...prev]);
     }
     navigate('members');
@@ -305,7 +305,7 @@ export default function App() {
         setMembers(prev => prev.map(m => m.id === memberId ? { ...m, photoUrl } : m));
       }
     } catch (err) {
-      console.warn('Could not update photo in Supabase:', err);
+      console.warn('Could not update photo in database:', err);
     }
   };
 
@@ -313,7 +313,7 @@ export default function App() {
     try {
       await updateMemberExpiration(memberId, newExpiresAt);
     } catch (err) {
-      console.warn('Could not update member expiration in Supabase:', err);
+      console.warn('Could not update member expiration in database:', err);
     }
     setMembers(prev => prev.map(m => {
       if (m.id === memberId) {
@@ -362,7 +362,7 @@ export default function App() {
         insertTransaction(renewalTransaction)
       ]);
     } catch (err) {
-      console.warn('Could not save renewal to Supabase:', err);
+      console.warn('Could not save renewal to database:', err);
     }
 
     setMembers(prev => prev.map(m => {
@@ -389,7 +389,7 @@ export default function App() {
     try {
       await pauseMemberPlan(memberId, pauseStatus);
     } catch (err) {
-      console.warn('Could not pause member in Supabase:', err);
+      console.warn('Could not pause member in database:', err);
     }
 
     setMembers(prev => prev.map(m => {
@@ -423,7 +423,7 @@ export default function App() {
     try {
       await unpauseMemberPlan(memberId, newExpiresAt);
     } catch (err) {
-      console.warn('Could not unpause member in Supabase:', err);
+      console.warn('Could not unpause member in database:', err);
     }
 
     setMembers(prev => prev.map(m => {
@@ -443,7 +443,7 @@ export default function App() {
     try {
       await deleteMember(id);
     } catch (err) {
-      console.warn('Could not delete from Supabase, updating locally:', err);
+      console.warn('Could not delete from database, updating locally:', err);
     }
     setMembers(prev => prev.filter(m => m.id !== id));
     navigate('members');
@@ -466,7 +466,7 @@ export default function App() {
       await insertDayPasser(newPasser);
       setDayPassers(prev => [newPasser, ...prev]);
     } catch (err) {
-      console.warn('Could not save to Supabase, updating locally:', err);
+      console.warn('Could not save to database, updating locally:', err);
       setDayPassers(prev => [newPasser, ...prev]);
     }
     navigate('daypass');
@@ -476,7 +476,7 @@ export default function App() {
     try {
       await deleteDayPasser(id);
     } catch (err) {
-      console.warn('Could not delete from Supabase, updating locally:', err);
+      console.warn('Could not delete from database, updating locally:', err);
     }
     setDayPassers(prev => prev.filter(dp => dp.id !== id));
     navigate('daypass');
@@ -514,15 +514,15 @@ export default function App() {
     try {
       await insertTransaction(transaction);
     } catch (err) {
-      console.warn('Could not save transaction to Supabase:', err);
+      console.warn('Could not save transaction to database:', err);
     }
 
-    // 2. Update Inventory in Supabase & state
+    // 2. Update Inventory in database & state
     const updatedInventory = inventory.map(invItem => {
       const cartItem = cart.find(c => c.id === invItem.id);
       if (cartItem) {
         const newStock = Math.max(0, parseInt(invItem.stock, 10) - cartItem.qty);
-        updateItemStock(invItem.id, newStock).catch(err => console.warn('Could not update stock in Supabase:', err));
+        updateItemStock(invItem.id, newStock).catch(err => console.warn('Could not update stock in database:', err));
         return { ...invItem, stock: String(newStock) };
       }
       return invItem;
@@ -550,7 +550,7 @@ export default function App() {
     try {
       await updateTransactionToPaid(transactionId, { paidDate, paidTime });
     } catch (err) {
-      console.warn('Could not update payment in Supabase, updating locally:', err);
+      console.warn('Could not update payment in database, updating locally:', err);
     }
 
     const updateHistoryList = (list) =>
@@ -589,7 +589,7 @@ export default function App() {
     try {
       await updateItemStock(itemId, newStock);
     } catch (err) {
-      console.warn('Could not update stock in Supabase:', err);
+      console.warn('Could not update stock in database:', err);
     }
 
     setInventory(inventory.map(i => {
