@@ -1,5 +1,34 @@
-import { supabase } from '../supabase';
 import { getLocalDateString, addDaysToDate } from '../utils/dateUtils';
+
+// Helper for making API calls with consistent error handling
+async function apiRequest(endpoint, options = {}) {
+  const defaultHeaders = {
+    'Content-Type': 'application/json',
+  };
+
+  const config = {
+    ...options,
+    headers: {
+      ...defaultHeaders,
+      ...options.headers,
+    },
+  };
+
+  try {
+    const response = await fetch(endpoint, config);
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      const errorMsg = data?.error || `Request failed with status ${response.status}`;
+      throw new Error(errorMsg);
+    }
+
+    return data;
+  } catch (err) {
+    console.error(`[API Error] ${options.method || 'GET'} ${endpoint}:`, err);
+    throw err;
+  }
+}
 
 // ==========================================
 // === AUTHENTICATION API ===
@@ -11,40 +40,13 @@ export async function authenticateStaff(username, password) {
 
   console.log('[Auth] Attempting login with username:', cleanUsername);
 
-  const { data, error } = await supabase
-    .from('staff_accounts')
-    .select('*')
-    .ilike('username', cleanUsername)
-    .eq('password', cleanPassword)
-    .maybeSingle();
-
-  console.log('[Auth] Supabase response:', { data, error });
-
-  if (error) {
-    console.error('[Auth] Database error:', error);
-    throw new Error(error.message || 'Database connection error');
-  }
-
-  if (!data) {
-    // Diagnostic check: test if table has any accounts or if RLS is blocking
-    const { data: allAccounts, error: checkError } = await supabase
-      .from('staff_accounts')
-      .select('username')
-      .limit(5);
-
-    console.log('[Auth] Visible accounts in DB:', allAccounts, 'Check error:', checkError);
-
-    if (!allAccounts || allAccounts.length === 0) {
-      throw new Error('No accounts found in staff_accounts. Make sure RLS is disabled or policy is added.');
-    }
-
-    throw new Error('Invalid username or password');
-  }
+  const data = await apiRequest('/api/auth', {
+    method: 'POST',
+    body: JSON.stringify({ username: cleanUsername, password: cleanPassword }),
+  });
 
   return data;
 }
-
-
 
 // ==========================================
 // === STORAGE API (MEMBER PHOTOS) ===
@@ -91,109 +93,49 @@ export async function compressImageToBase64(file, maxWidth = 350, maxHeight = 35
 
 export async function uploadMemberPhoto(file, memberId) {
   if (!file) return null;
-
-  // Sanitize memberId (remove '#' or special characters that break S3/Supabase storage)
-  const cleanId = String(memberId).replace(/[^a-zA-Z0-9_-]/g, '_');
-  const fileExt = file.name ? file.name.split('.').pop() : 'jpg';
-  const filePath = `photo_${cleanId}_${Date.now()}.${fileExt}`;
-
-  // 1. Try uploading to Supabase Storage bucket
-  try {
-    const { error: uploadError } = await supabase.storage
-      .from('member-photos')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: true,
-      });
-
-    if (!uploadError) {
-      const { data: publicData } = supabase.storage
-        .from('member-photos')
-        .getPublicUrl(filePath);
-
-      if (publicData?.publicUrl) {
-        console.log('[Storage] Photo uploaded successfully to bucket:', publicData.publicUrl);
-        return publicData.publicUrl;
-      }
-    } else {
-      console.warn('[Storage] Bucket upload warning, falling back to permanent base64:', uploadError);
-    }
-  } catch (err) {
-    console.warn('[Storage] Exception during bucket upload, falling back to permanent base64:', err);
-  }
-
-  // 2. Fallback: Compress and store permanently as Base64 in database
+  // Compress to lightweight Base64 dataUrl, stored directly in PostgreSQL TEXT column
   const base64Url = await compressImageToBase64(file);
-  console.log('[Storage] Saved photo permanently as base64 database record');
+  console.log('[Storage] Processed photo as base64 database record for member:', memberId);
   return base64Url;
 }
-
 
 // ==========================================
 // === INVENTORY API ===
 // ==========================================
 
 export async function fetchInventory() {
-  const { data, error } = await supabase
-    .from('inventory')
-    .select('*')
-    .order('name', { ascending: true });
-
-  if (error) {
-    console.error('Error fetching inventory:', error);
-    throw error;
-  }
+  const data = await apiRequest('/api/inventory');
   return data || [];
 }
 
 export async function insertInventoryItem(item) {
-  const { data, error } = await supabase
-    .from('inventory')
-    .insert([
-      {
-        id: item.id,
-        name: item.name,
-        category: item.category,
-        price: parseFloat(item.price),
-        stock: parseInt(item.stock, 10),
-        threshold: parseInt(item.threshold, 10),
-      }
-    ])
-    .select()
-    .maybeSingle();
-
-  if (error) {
-    console.error('Error adding inventory item:', error);
-    throw error;
-  }
-  return data;
+  return apiRequest('/api/inventory', {
+    method: 'POST',
+    body: JSON.stringify({
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      price: parseFloat(item.price),
+      stock: parseInt(item.stock, 10),
+      threshold: parseInt(item.threshold, 10),
+    }),
+  });
 }
 
 export async function updateItemStock(id, newStock) {
-  const { data, error } = await supabase
-    .from('inventory')
-    .update({ stock: parseInt(newStock, 10) })
-    .eq('id', id)
-    .select()
-    .maybeSingle();
-
-  if (error) {
-    console.error('Error updating stock:', error);
-    throw error;
-  }
-  return data;
+  return apiRequest('/api/inventory', {
+    method: 'PUT',
+    body: JSON.stringify({
+      id,
+      stock: parseInt(newStock, 10),
+    }),
+  });
 }
 
 export async function deleteInventoryItem(id) {
-  const { error } = await supabase
-    .from('inventory')
-    .delete()
-    .eq('id', id);
-
-  if (error) {
-    console.error('Error deleting inventory item:', error);
-    throw error;
-  }
+  return apiRequest(`/api/inventory?id=${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
 }
 
 // ==========================================
@@ -201,141 +143,83 @@ export async function deleteInventoryItem(id) {
 // ==========================================
 
 export async function fetchMembers() {
-  const { data, error } = await supabase
-    .from('members')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    console.error('Error fetching members:', error);
-    throw error;
-  }
+  const data = await apiRequest('/api/members');
   return data || [];
 }
 
 export async function insertMember(member) {
-  const { data, error } = await supabase
-    .from('members')
-    .insert([
-      {
-        id: member.id,
-        name: member.name,
-        phone: member.phone,
-        plan: member.plan || 'Monthly (₱500)',
-        status: member.status || 'ACTIVE',
-        start_date: member.startDate || getLocalDateString(),
-        expires_at: member.expiresAt || addDaysToDate(new Date(), 30),
-        photo_url: member.photoUrl || null,
-      }
-    ])
-    .select()
-    .maybeSingle();
-
-  if (error) {
-    console.error('Error adding member:', error);
-    throw error;
-  }
-  return data;
+  return apiRequest('/api/members', {
+    method: 'POST',
+    body: JSON.stringify({
+      id: member.id,
+      name: member.name,
+      phone: member.phone,
+      plan: member.plan || 'Monthly (₱500)',
+      status: member.status || 'ACTIVE',
+      start_date: member.startDate || getLocalDateString(),
+      expires_at: member.expiresAt || addDaysToDate(new Date(), 30),
+      photo_url: member.photoUrl || null,
+    }),
+  });
 }
 
 export async function renewMemberPlan(memberId, newExpiresAt) {
-  const { data, error } = await supabase
-    .from('members')
-    .update({
+  return apiRequest('/api/members', {
+    method: 'PUT',
+    body: JSON.stringify({
+      id: memberId,
       expires_at: newExpiresAt,
       status: 'ACTIVE',
-    })
-    .eq('id', memberId)
-    .select()
-    .maybeSingle();
-
-  if (error) {
-    console.error('Error renewing member plan:', error);
-    throw error;
-  }
-  return data;
+    }),
+  });
 }
 
 export async function pauseMemberPlan(memberId, pauseStatus) {
-  const { data, error } = await supabase
-    .from('members')
-    .update({
+  return apiRequest('/api/members', {
+    method: 'PUT',
+    body: JSON.stringify({
+      id: memberId,
       status: pauseStatus,
-    })
-    .eq('id', memberId)
-    .select()
-    .maybeSingle();
-
-  if (error) {
-    console.error('Error pausing member plan:', error);
-    throw error;
-  }
-  return data;
+    }),
+  });
 }
 
 export async function unpauseMemberPlan(memberId, newExpiresAt) {
-  const { data, error } = await supabase
-    .from('members')
-    .update({
+  return apiRequest('/api/members', {
+    method: 'PUT',
+    body: JSON.stringify({
+      id: memberId,
       expires_at: newExpiresAt,
       status: 'ACTIVE',
-    })
-    .eq('id', memberId)
-    .select()
-    .maybeSingle();
-
-  if (error) {
-    console.error('Error unpausing member plan:', error);
-    throw error;
-  }
-  return data;
+    }),
+  });
 }
 
 export async function updateMemberExpiration(memberId, newExpiresAt) {
-  const { data, error } = await supabase
-    .from('members')
-    .update({
+  return apiRequest('/api/members', {
+    method: 'PUT',
+    body: JSON.stringify({
+      id: memberId,
       expires_at: newExpiresAt,
       status: 'ACTIVE',
-    })
-    .eq('id', memberId)
-    .select()
-    .maybeSingle();
-
-  if (error) {
-    console.error('Error updating member expiration:', error);
-    throw error;
-  }
-  return data;
+    }),
+  });
 }
 
-
-
 export async function updateMemberPhoto(memberId, photoUrl) {
-  const { data, error } = await supabase
-    .from('members')
-    .update({ photo_url: photoUrl })
-    .eq('id', memberId)
-    .select()
-    .maybeSingle();
-
-  if (error) {
-    console.error('Error updating member photo:', error);
-    throw error;
-  }
-  return data;
+  return apiRequest('/api/members', {
+    method: 'PUT',
+    body: JSON.stringify({
+      id: memberId,
+      photo_url: photoUrl,
+    }),
+  });
 }
 
 export async function deleteMember(id) {
-  const { error } = await supabase
-    .from('members')
-    .delete()
-    .eq('id', id);
-
-  if (error) {
-    console.error('Error deleting member:', error);
-    throw error;
-  }
+  return apiRequest(`/api/members?id=${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
 }
 
 // ==========================================
@@ -343,51 +227,28 @@ export async function deleteMember(id) {
 // ==========================================
 
 export async function fetchDayPassers() {
-  const { data, error } = await supabase
-    .from('day_passers')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    console.error('Error fetching day passers:', error);
-    throw error;
-  }
+  const data = await apiRequest('/api/daypassers');
   return data || [];
 }
 
 export async function insertDayPasser(passer) {
-  const { data, error } = await supabase
-    .from('day_passers')
-    .insert([
-      {
-        id: passer.id,
-        name: passer.name,
-        status: passer.status || 'ACTIVE',
-        raw_date: passer.rawDate,
-        date: passer.date,
-        time: passer.time,
-      }
-    ])
-    .select()
-    .maybeSingle();
-
-  if (error) {
-    console.error('Error adding day passer:', error);
-    throw error;
-  }
-  return data;
+  return apiRequest('/api/daypassers', {
+    method: 'POST',
+    body: JSON.stringify({
+      id: passer.id,
+      name: passer.name,
+      status: passer.status || 'ACTIVE',
+      raw_date: passer.rawDate,
+      date: passer.date,
+      time: passer.time,
+    }),
+  });
 }
 
 export async function deleteDayPasser(id) {
-  const { error } = await supabase
-    .from('day_passers')
-    .delete()
-    .eq('id', id);
-
-  if (error) {
-    console.error('Error deleting day passer:', error);
-    throw error;
-  }
+  return apiRequest(`/api/daypassers?id=${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
 }
 
 // ==========================================
@@ -395,96 +256,67 @@ export async function deleteDayPasser(id) {
 // ==========================================
 
 export async function fetchTransactions() {
-  const { data, error } = await supabase
-    .from('transactions')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    console.error('Error fetching transactions:', error);
-    throw error;
-  }
+  const data = await apiRequest('/api/transactions');
   return data || [];
 }
 
 export async function insertTransaction(transaction) {
-  const { data, error } = await supabase
-    .from('transactions')
-    .insert([
-      {
-        transaction_id: transaction.transactionId,
-        customer_id: transaction.customerId,
-        customer_type: transaction.customerType,
-        total_amount: transaction.totalAmount,
-        status: transaction.status,
-        items: transaction.items,
-        date: transaction.date,
-        time: transaction.time,
-        paid_date: transaction.paidDate || null,
-        paid_time: transaction.paidTime || null,
-        was_unpaid: transaction.wasUnpaid || transaction.status === 'UNPAID',
-      }
-    ])
-    .select()
-    .maybeSingle();
-
-  if (error) {
-    console.error('Error saving transaction:', error);
-    throw error;
-  }
-  return data;
+  return apiRequest('/api/transactions', {
+    method: 'POST',
+    body: JSON.stringify({
+      transactionId: transaction.transactionId,
+      customerId: transaction.customerId,
+      customerType: transaction.customerType,
+      totalAmount: transaction.totalAmount,
+      status: transaction.status,
+      items: transaction.items,
+      date: transaction.date,
+      time: transaction.time,
+      paidDate: transaction.paidDate || null,
+      paidTime: transaction.paidTime || null,
+      wasUnpaid: transaction.wasUnpaid || transaction.status === 'UNPAID',
+    }),
+  });
 }
 
 export async function updateTransactionToPaid(transactionId, { paidDate, paidTime }) {
-  const { data, error } = await supabase
-    .from('transactions')
-    .update({
-      status: 'PAID',
-      paid_date: paidDate,
-      paid_time: paidTime,
-      was_unpaid: true,
-    })
-    .eq('transaction_id', transactionId)
-    .select()
-    .maybeSingle();
-
-  if (error) {
-    console.error('Error updating transaction payment:', error);
-    throw error;
-  }
-  return data;
+  return apiRequest('/api/transactions', {
+    method: 'PUT',
+    body: JSON.stringify({
+      transactionId,
+      paidDate,
+      paidTime,
+    }),
+  });
 }
 
 // ==========================================
-// === REALTIME SUBSCRIPTIONS ===
+// === REALTIME / AUTO-SYNC ===
 // ==========================================
 
 export function subscribeToRealtimeChanges(onDataChange) {
-  const channel = supabase
-    .channel('gym-db-changes')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'members' },
-      () => onDataChange('members')
-    )
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'inventory' },
-      () => onDataChange('inventory')
-    )
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'day_passers' },
-      () => onDataChange('day_passers')
-    )
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'transactions' },
-      () => onDataChange('transactions')
-    )
-    .subscribe();
+  // Synchronize periodically across devices/tabs (every 10 seconds)
+  const intervalId = setInterval(() => {
+    onDataChange('members');
+    onDataChange('inventory');
+    onDataChange('day_passers');
+    onDataChange('transactions');
+  }, 10000);
+
+  // Also sync when browser tab regains focus
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === 'visible') {
+      onDataChange('members');
+      onDataChange('inventory');
+      onDataChange('day_passers');
+      onDataChange('transactions');
+    }
+  };
+
+  document.addEventListener('visibilitychange', handleVisibilityChange);
 
   return () => {
-    supabase.removeChannel(channel);
+    clearInterval(intervalId);
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
   };
 }

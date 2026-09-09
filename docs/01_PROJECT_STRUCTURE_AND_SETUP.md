@@ -9,6 +9,7 @@ This guide explains how to start a new React project from scratch and how to org
 We use **Vite** because it is the fastest, cleanest standard tool for building React apps today.
 
 ### Open your terminal (PowerShell / Command Prompt) and run:
+
 ```bash
 # 1. Create a new Vite React app (replace 'my-new-app' with your project name)
 npm create vite@latest my-new-app -- --template react
@@ -34,11 +35,13 @@ npm run dev
 ## 2. Setting Up Tailwind CSS
 
 In modern Vite projects (`tailwindcss v4`):
+
 1. In `vite.config.js`:
+
 ```javascript
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import tailwindcss from '@tailwindcss/vite';
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -46,6 +49,7 @@ export default defineConfig({
 ```
 
 2. In `src/index.css`:
+
 ```css
 @import "tailwindcss";
 ```
@@ -109,10 +113,10 @@ my-new-app/
 
 ## 4. Rule of Thumb for Where Code Belongs
 
-| If you are writing... | Put it in... | Example |
-| :--- | :--- | :--- |
-| A reusable visual piece (used in multiple screens) | `src/components/` | `Button.jsx`, `Badge.jsx`, `Input.jsx` |
-| An entire page / view | `src/screens/<feature>/` | `DashboardScreen.jsx`, `StockScreen.jsx` |
-| Code that touches Supabase | `src/services/api.js` | `fetchMembers()`, `updateItemStock()` |
-| Date or calculation logic | `src/utils/` | `getLocalDateString()`, `addDaysToDate()` |
-| App-wide state & page router | `src/App.jsx` | Screen switcher (`switch (view)`) |
+| If you are writing...                              | Put it in...             | Example                                   |
+| :------------------------------------------------- | :----------------------- | :---------------------------------------- |
+| A reusable visual piece (used in multiple screens) | `src/components/`        | `Button.jsx`, `Badge.jsx`, `Input.jsx`    |
+| An entire page / view                              | `src/screens/<feature>/` | `DashboardScreen.jsx`, `StockScreen.jsx`  |
+| Code that touches Supabase                         | `src/services/api.js`    | `fetchMembers()`, `updateItemStock()`     |
+| Date or calculation logic                          | `src/utils/`             | `getLocalDateString()`, `addDaysToDate()` |
+| App-wide state & page router                       | `src/App.jsx`            | Screen switcher (`switch (view)`)         |

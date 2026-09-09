@@ -9,6 +9,7 @@ This guide walks you through connecting any project to GitHub, saving your work 
 Never upload `node_modules` (gigabytes of libraries) or your `.env` file (private keys) to GitHub.
 
 Create a file named `.gitignore` in your project root:
+
 ```gitignore
 # Dependencies
 node_modules
@@ -40,6 +41,7 @@ Thumbs.db
 ## 2. Connecting Your Project to a New GitHub Repository
 
 ### Step A: Create a Repository on GitHub
+
 1. Go to [github.com/new](https://github.com/new).
 2. Enter a **Repository name** (e.g., `gym-membership-tracker`).
 3. Set it to **Public** or **Private**.
@@ -50,6 +52,7 @@ Thumbs.db
 ---
 
 ### Step B: Initialize & Link in Terminal
+
 Open your project folder in your terminal and run these commands **one by one**:
 
 ```bash
@@ -95,8 +98,9 @@ git push
 ## 4. Common Git Errors & Quick Fixes
 
 ### Error 1: `fatal: remote origin already exists`
-* **Cause**: You previously linked a remote URL.
-* **Fix**:
+
+- **Cause**: You previously linked a remote URL.
+- **Fix**:
   ```bash
   git remote remove origin
   git remote add origin https://github.com/your-username/my-new-app.git
@@ -104,16 +108,18 @@ git push
   ```
 
 ### Error 2: `failed to push some refs to ... (rejected - non-fast-forward)`
-* **Cause**: GitHub has commits (like a README created online) that your computer doesn't have yet.
-* **Fix**:
+
+- **Cause**: GitHub has commits (like a README created online) that your computer doesn't have yet.
+- **Fix**:
   ```bash
   git pull origin main --rebase
   git push origin main
   ```
 
 ### Error 3: `fatal: .git/index: index file smaller than expected`
-* **Cause**: The internal tracking index file became 0 bytes due to an interrupted process.
-* **Fix**:
+
+- **Cause**: The internal tracking index file became 0 bytes due to an interrupted process.
+- **Fix**:
   ```powershell
   # In PowerShell:
   Remove-Item .git/index -Force

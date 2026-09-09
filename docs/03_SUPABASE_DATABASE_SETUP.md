@@ -9,7 +9,7 @@ Supabase provides your database (PostgreSQL), authentication, file storage, and 
 1. Go to **[supabase.com](https://supabase.com)** and log in with your GitHub account.
 2. Click **"New project"**.
 3. Choose an Organization, enter a **Name** (e.g., `gym_pos`), and set a **Database Password** (save this password in your notes).
-4. Choose the region closest to your users (e.g., *Southeast Asia / Singapore*).
+4. Choose the region closest to your users (e.g., _Southeast Asia / Singapore_).
 5. Click **Create new project** and wait ~1-2 minutes for it to provision.
 
 ---
@@ -19,8 +19,8 @@ Supabase provides your database (PostgreSQL), authentication, file storage, and 
 1. In your Supabase project dashboard, click the ⚙️ **Project Settings** icon (bottom left).
 2. Click **API** under Configuration.
 3. Find:
-   * **Project URL**: e.g., `https://abcdefg.supabase.co`
-   * **Project API keys** $\rightarrow$ `anon` / `public`: e.g., `eyJhbGciOi...`
+   - **Project URL**: e.g., `https://abcdefg.supabase.co`
+   - **Project API keys** $\rightarrow$ `anon` / `public`: e.g., `eyJhbGciOi...`
 4. In your project root, create a file named `.env`:
    ```env
    VITE_SUPABASE_URL=https://your-project-ref.supabase.co
@@ -35,13 +35,13 @@ Supabase provides your database (PostgreSQL), authentication, file storage, and 
 Create `src/supabase.js` to initialize a single connection instance used across the entire app:
 
 ```javascript
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('⚠️ Supabase credentials missing! Check your .env file.');
+  console.warn("⚠️ Supabase credentials missing! Check your .env file.");
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -112,7 +112,9 @@ create table if not exists public.transactions (
 By default, Supabase enables **Row Level Security (RLS)** on newly created tables. If RLS is ON and you haven't created policies, Supabase will silently return **empty arrays `[]`** or **401 Unauthorized errors** to your app!
 
 ### For Direct-Client Apps (Fastest Setup):
+
 Either disable RLS for your tables in SQL Editor:
+
 ```sql
 alter table public.staff_accounts disable row level security;
 alter table public.members disable row level security;
@@ -121,6 +123,7 @@ alter table public.transactions disable row level security;
 ```
 
 Or enable an open policy:
+
 ```sql
 create policy "Allow all access" on public.members for all using (true) with check (true);
 ```
@@ -130,6 +133,7 @@ create policy "Allow all access" on public.members for all using (true) with che
 ## 6. Enabling Realtime Sync (Instant Updates on Multiple Devices)
 
 To make changes on your phone appear on your laptop immediately without refreshing:
+
 1. In Supabase, go to **Database** $\rightarrow$ **Replication**.
 2. Click **Source** $\rightarrow$ `supabase_realtime`.
 3. Toggle ON the tables you want to sync in real time (`members`, `inventory`, `transactions`).
